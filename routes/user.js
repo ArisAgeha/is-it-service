@@ -54,5 +54,5 @@ router.get('/currentUser', (req, res, next) => {
     });
 })
 
-router.delete
+
 module.exports = router;

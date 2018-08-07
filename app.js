@@ -10,6 +10,7 @@ var userRouter = require('./routes/user.js');
 var answerRouter = require('./routes/answer.js');
 var followRouter = require('./routes/follow.js');
 var commentRouter = require('./routes/comment.js');
+var fetchRouter = require('./routes/fetch.js');
 var cookieParser = require('cookie-parser');
 var cors = require('cors')
 let bodyParser = require('body-parser');
@@ -65,6 +66,7 @@ app.use('/user', userRouter);
 app.use('/answer', answerRouter);
 app.use('/follow', followRouter);
 app.use('/comment', commentRouter);
+app.use('/fetch', fetchRouter);
 
 /* ---------------------------------------------------- */
 // catch 404 and forward to error handler
