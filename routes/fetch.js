@@ -61,9 +61,44 @@ router.post('/userFollower', (req, res, next) => {
     })
 })
 //查询用户详情
-router.post('userDetail', (req, res, next) => {
-    let {userID} = res.body;
-    
+router.post('/userDetail', (req, res, next) => {
+    let {userID} = req.body;
+    let userObj = AV.Object.createWithoutData('_User', userID);
+    userObj.fetch().then(async (userRes) => {
+        let answerCount = await getCountFromPointer({
+            'parentID': userID,
+            'parentClassName': '_User',
+            'childClassName': 'Answer',
+            'dependent': 'userID'
+        })
+        let questionCount = await getCountFromPointer({
+            'parentID': userID,
+            'parentClassName': '_User',
+            'childClassName': 'Question',
+            'dependent': 'userID'
+        })
+        let followerCount = await getCountFromMap({
+            'queryClassName': '_User',
+            'queryClassID': userID,
+            'mapName': 'UserFollow',
+            'dependent': 'followingID'
+        })
+        let followingCount = await getCountFromMap({
+            'queryClassName': '_User',
+            'queryClassID': userID,
+            'mapName': 'UserFollow',
+            'dependent': 'userID'
+        })
+        console.log(followingCount);
+        let user = JSON.parse(JSON.stringify(userRes));
+        user.answerCount = answerCount;
+        user.questionCount = questionCount;
+        user.followerCount = followerCount;
+        user.followingCount = followingCount;
+        res.send(user);
+    }).catch(err => {
+        console.log(err);
+    }) 
 })
 
 // Topic页

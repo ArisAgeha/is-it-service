@@ -12,7 +12,7 @@ function getCountFromPointer(options) {
 }
 
 function  getCountFromMap(options) {
-    // queryClass: 提供要关联数据的类
+    // queryClass: 用于要关联数据的类
     // mapName: 保存关联信息的中间表
     // dependent: 要关联的数据的类在中间表中的pointer名
 
