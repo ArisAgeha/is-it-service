@@ -13,10 +13,6 @@ router.post('/signup', function(req, res, next) {
     user.signUp({
         username: username,
         password: password,
-        agree: 0,
-        question: 0,
-        answer: 0,
-        lastCheck: 0
     }).then((data) => {
         res.send(data);
     }, (err) => {

@@ -11,8 +11,8 @@ router.post('/addComment', function(req, res, next) {
     }
     AV.User.become(sessionToken).then((userMsg) => {
         let {answerID, hasReply, targetData, replyTo, replyQueue, content} = req.body;
-        let comment = AV.Object('Comment');
         let answer = AV.Object.createWithoutData('Answer', answerID);
+        let comment = AV.Object('Comment');
         comment.set('userID', userMsg);
         comment.set('answerID', answer);
         comment.set('hasReply', hasReply);

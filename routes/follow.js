@@ -2,6 +2,7 @@ let express = require('express');
 let router = express.Router();
 let AV = require('../models/lc.js');
 
+// 关注用户
 router.post('/user', function(req, res, next) {
     let sessionToken = req.cookies.isLogin || null;
     if (!sessionToken) {
@@ -25,6 +26,7 @@ router.post('/user', function(req, res, next) {
     })
 })
 
+// 关注问题
 router.post('/question', function(req, res, next) {
     let sessionToken = req.cookies.isLogin || null;
     if (!sessionToken) {
@@ -47,6 +49,7 @@ router.post('/question', function(req, res, next) {
     })
 })
 
+// 关注话题
 router.post('/topic', function(req, res, next) {
     let sessionToken = req.cookies.isLogin || null;
     if (!sessionToken) {
