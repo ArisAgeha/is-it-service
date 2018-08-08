@@ -11,10 +11,10 @@ router.post('/addQuestion', function(req, res, next) {
     }
     AV.User.become(sessionToken).then((userMsg) => {
         let {title, topic, description} = req.body;
+        let answerCount = 0;
         let question = AV.Object('Question');
         question.set('userID', userMsg);
-
-        question.save({title, topic, description}).then((status) => {
+        question.save({title, topic, description, answerCount}).then((status) => {
             let setQuestion = new AV.Object.createWithoutData('Question', status.id)
             let query = new AV.Query('Topic');
             query.containedIn('topicName', topic)

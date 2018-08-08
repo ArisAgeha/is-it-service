@@ -9,27 +9,21 @@ router.post('/addAnswer', function(req, res, next) {
         return;
     }
     AV.User.become(sessionToken).then((userMsg) => {
-        let {ellipsis, content, agree, disagree, questionID} = req.body;
+        let {ellipsis, content, questionID} = req.body;
+        let agreeCount = 0;
+        let commentCount = 0;
         let answer = AV.Object('Answer');
         let question = AV.Object.createWithoutData('Question', questionID);
         answer.set('userID', userMsg);
         answer.set('questionID', question);
-        answer.save({ellipsis, content, agree, disagree}).then((status) => {
-                let answerID = status.id;
-                let answerproxy = AV.Object.createWithoutData('answer', answerID);
-                let userAgree = AV.Object('Agree');
-                let userDisagree = AV.Object('Disagree');
-                userAgree.set('userID', userMsg);
-                userAgree.set('answerID', answerproxy);
-                userDisagree.set('userID', userMsg);
-                userDisagree.set('answerID', answerproxy);
-                let saveList = [userAgree, userDisagree];
-                AV.Object.saveAll(saveList).then(status => {
-                    res.send(status);
-                }).catch(err => {
-                    res.send(err);
-                })
-            })
+        answer.save({ellipsis, content, agreeCount, commentCount}).then((results) => {
+            res.send(results);
+        }).catch((err) => {
+            console.log(err);
+            res.send(err);
+        })
+    }).catch(err => {
+        console.log(err);
     })
 })
 

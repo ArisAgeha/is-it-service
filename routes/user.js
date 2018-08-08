@@ -13,6 +13,8 @@ router.post('/signup', function(req, res, next) {
     user.signUp({
         username: username,
         password: password,
+        agree: 0,
+        question: 0,
         answer: 0,
         lastCheck: 0
     }).then((data) => {
@@ -26,6 +28,7 @@ router.post('/login', (req, res, next) => {
     let {username, password} = req.body;
     AV.User.logIn(username, password).then((status) => {
         res.cookie('isLogin', status._sessionToken);
+        res.cookie('userID', status.id);
         res.send(status);
     }).catch((err) => {
         console.log(err);
@@ -40,19 +43,8 @@ router.delete('/logout', (req, res, next) => {
         return;
     }
     res.clearCookie('isLogin');
+    res.clearCookie('userID');
     res.send('logout');
 })
-
-router.get('/currentUser', (req, res, next) => {
-    let sessionToken = req.cookies.isLogin || null;
-    if (!sessionToken) {
-        res.send({code: 1, message: 'not login.'});
-        return;
-    }
-    AV.User.become(sessionToken).then((status) => {
-        console.log(status);
-    });
-})
-
 
 module.exports = router;
