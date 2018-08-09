@@ -160,6 +160,39 @@ router.post('/questionPage', (req, res, next) => {
     })
 })
 
+// 获取评论
+router.post('/comment', (req, res, next) => {
+    let {answerID, skip} = req.body;
+    let limit = 20;
+    let answer = AV.Object.createWithoutData('Answer', answerID);
+    let queryComment = new AV.Query('Comment');
+    queryComment.descending('createdAt');
+    queryComment.equalTo('answerID', answer);
+    queryComment.skip(skip);
+    queryComment.limit(limit);
+    queryComment.find().then((comment) => {
+        res.send(comment);
+    })
+})
+
+// 获取评论对话
+router.post('/dialog', (req, res, next) => {
+    let {queueID, skip} = req.body;
+    let limit = 20;
+    let firstCommentObj = AV.Object.createWithoutData('Comment', queueID);
+    firstCommentObj.fetch().then((firstComment) => {
+        let commentsObj = new AV.Query('Comment');
+        commentsObj.equalTo('replyQueue', queueID);
+        commentsObj.ascending('createdAt');
+        commentsObj.limit(limit);
+        commentsObj.skip(skip);
+        commentsObj.find().then((comments) => {
+            comments.unshift(firstComment);
+            res.send(comments);
+        })
+    })
+})
+
 function getQuestionsAnswer(req, res, questionRes, limit, skip) {
     limit = limit || 1;
     skip = skip || 0;
@@ -222,4 +255,6 @@ function getQuestionsAnswer(req, res, questionRes, limit, skip) {
         })
     }
 }
+
+
 module.exports = router;
