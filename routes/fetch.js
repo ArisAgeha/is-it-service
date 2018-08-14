@@ -6,16 +6,13 @@ let {getCountFromPointer, getCountFromMap} = require('../models/getCount.js');
 // 首页
 // 查询首页内容
 router.get('/index', async (req, res, next) => {
-    console.log(getCountFromPointer)
-    console.log(getCountFromMap)
     let {skip} = req.query;
     let limit = 20;
     let query = new AV.Query('Question');
-    query.find({
-        descending: 'createdAt',
-        limit,
-        skip: skip
-    }).then((questionRes) => {
+    query.descending('createdAt');
+    query.skip(skip);
+    query.limit(limit)
+    query.find().then((questionRes) => {
         getQuestionsAnswer(req, res, questionRes, 1);
     }).catch((err) => {
         console.log(err);
@@ -161,8 +158,8 @@ router.post('/questionPage', (req, res, next) => {
 })
 
 // 获取评论
-router.post('/comment', (req, res, next) => {
-    let {answerID, skip} = req.body;
+router.get('/comment', (req, res, next) => {
+    let {answerID, skip} = req.query;
     let limit = 20;
     let answer = AV.Object.createWithoutData('Answer', answerID);
     let queryComment = new AV.Query('Comment');
@@ -170,26 +167,31 @@ router.post('/comment', (req, res, next) => {
     queryComment.equalTo('answerID', answer);
     queryComment.skip(skip);
     queryComment.limit(limit);
+    queryComment.include('userID');
     queryComment.find().then((comment) => {
         res.send(comment);
     })
 })
 
 // 获取评论对话
-router.post('/dialog', (req, res, next) => {
-    let {queueID, skip} = req.body;
-    let limit = 20;
-    let firstCommentObj = AV.Object.createWithoutData('Comment', queueID);
-    firstCommentObj.fetch().then((firstComment) => {
+router.get('/dialog', (req, res, next) => {
+    let {queueID} = req.query;
+    let firstCommentObj = new AV.Query('Comment');
+    firstCommentObj.equalTo('objectId', queueID);
+    firstCommentObj.include('userID');
+    firstCommentObj.find().then((firstComment) => {
         let commentsObj = new AV.Query('Comment');
         commentsObj.equalTo('replyQueue', queueID);
         commentsObj.ascending('createdAt');
-        commentsObj.limit(limit);
-        commentsObj.skip(skip);
+        commentsObj.include('userID');
         commentsObj.find().then((comments) => {
-            comments.unshift(firstComment);
+            comments.unshift(firstComment[0]);
             res.send(comments);
+        }).catch(err => {
+            console.log(err);
         })
+    }).catch(err => {
+        console.log(err);
     })
 })
 
