@@ -13,6 +13,10 @@ router.get('/index', async (req, res, next) => {
     query.skip(skip);
     query.limit(limit)
     query.find().then((questionRes) => {
+        if (!questionRes[0]) {
+            res.status(403);
+            res.send();
+        }
         getQuestionsAnswer(req, res, questionRes, 1);
     }).catch((err) => {
         console.log(err);
@@ -50,7 +54,6 @@ router.post('/userFollower', (req, res, next) => {
     UserFollow.descending('createdAt');
     UserFollow.include('userID');
     UserFollow.find().then((status) => {
-        console.log(status);
         res.send(status);
     }).catch((err) => {
         console.log(err);
@@ -86,7 +89,6 @@ router.post('/userDetail', (req, res, next) => {
             'mapName': 'UserFollow',
             'dependent': 'userID'
         })
-        console.log(followingCount);
         let user = JSON.parse(JSON.stringify(userRes));
         user.answerCount = answerCount;
         user.questionCount = questionCount;
@@ -101,7 +103,7 @@ router.post('/userDetail', (req, res, next) => {
 // Topic页
 // 查询用户关注的话题
 router.get('/topic', (req, res, next) => {
-    let sessionToken = req.cookies.isLogin || null;
+    let sessionToken = req.cookies.sessionToken || null;
     if (!sessionToken) {
         res.send({code: 1, message: 'not login.'});
         return;
@@ -119,9 +121,22 @@ router.get('/topic', (req, res, next) => {
         })
     })
 })
+// Topics页
+// 查询所有话题
+router.get('/topics', (req, res, next) => {
+    let query = new AV.Query('Topic');
+    query.ascending('createdAt');
+    query.find().then((topics) => {
+        res.send(topics);
+    }).catch((err) => {
+        console.log(err);
+        res.status(403);
+        res.send(err);
+    })
+})
 // 根据topicID查询question
-router.post('/topicQuestion', (req, res, next) => {
-    let {topicID, skip} = req.body;
+router.get('/topicQuestion', (req, res, next) => {
+    let {topicID, skip} = req.query;
     let limit = 20;
     let topic = AV.Object.createWithoutData('Topic', topicID);
     let TopicQuestion = new AV.Query('TopicQuestion');
@@ -131,6 +146,11 @@ router.post('/topicQuestion', (req, res, next) => {
     TopicQuestion.descending('createdAt');
     TopicQuestion.include('questionID');
     TopicQuestion.find().then((questionRes) => {
+        if (questionRes.length === 0) {
+            res.status(403);
+            res.send();   
+            return;
+        }
         let extractedData = [];
         for (let item of questionRes) {
             extractedData.push(item.attributes.questionID);
@@ -138,19 +158,49 @@ router.post('/topicQuestion', (req, res, next) => {
         getQuestionsAnswer(req, res, extractedData, 1);
     }).catch((err) => {
         console.log(err);
+        res.status(403);
+        res.send(err);
+    }).catch((err) => {
+        console.log(err);
+        res.status(403);
         res.send(err);
     })
+})
+router.get('/topicIsFollow', (req, res, next) => {
+    let {topicID} = req.query;
+    let sessionToken = req.cookies.sessionToken || null;
+    if (sessionToken) {
+        AV.User.become(sessionToken).then((userMsg) => {
+            let TopicFollow = new AV.Query('TopicFollow');
+            let topic = AV.Object.createWithoutData('Topic', topicID);
+            TopicFollow.equalTo('topicID', topic);
+            TopicFollow.equalTo('userID', userMsg);
+            TopicFollow.find().then((followMsg) => {
+                let isFollow = followMsg[0]? true: false;
+                res.send(isFollow);
+            }).catch((err) => {
+                console.log(err);
+                res.status(403);
+                res.send(err);
+            })
+        }).catch(err => {
+            console.log(err);
+        })
+    } else {
+        res.send('false');
+    }
 })
 
 // question页
 // 获取问题详情
-router.post('/questionPage', (req, res, next) => {
-    let {questionID, skip} = req.body;
+router.get('/questionPage', (req, res, next) => {
+    let {questionID, skip} = req.query;
     let limit = 20;
     let question = AV.Object.createWithoutData('Question', questionID);
+    let sessionToken = req.cookies.sessionToken || null;
     question.fetch().then((questionRes) => {
         let extractedData = [questionRes];
-        getQuestionsAnswer(req, res, extractedData, limit, skip);
+        getQuestionsAnswer(req, res, extractedData, limit, skip, sessionToken);
     }).catch((err) => {
         console.log(err);
         res.send(err);
@@ -195,11 +245,26 @@ router.get('/dialog', (req, res, next) => {
     })
 })
 
-function getQuestionsAnswer(req, res, questionRes, limit, skip) {
+async function getQuestionsAnswer(req, res, questionRes, limit, skip, sessionToken) {
+    let isFollow = false;
+    if (sessionToken) {
+        let user = await AV.User.become(sessionToken);
+        let query = new AV.Query('QuestionFollow');
+        let question = AV.Object.createWithoutData('Question', questionRes[0].id);
+        query.equalTo('userID', user);
+        query.equalTo('questionID', question);
+        let res = await query.find();
+        isFollow = res[0]?true: false;
+    }
     limit = limit || 1;
     skip = skip || 0;
-    let isDone = 0;
+
     let results = JSON.parse(JSON.stringify(questionRes));
+    if (results.length > 0) results[0].isFollow = isFollow;
+    let isDoneA = 0;
+    let isDoneB = 0;
+    let doneCountA = results.length;
+    let doneCountB = 0;
     for (let i = 0; i < results.length; i++) {
         let tempItem = results[i];
         let queryAnswer = new AV.Query('Answer');
@@ -210,46 +275,65 @@ function getQuestionsAnswer(req, res, questionRes, limit, skip) {
         queryAnswer.include('userID');
         queryAnswer.find().then(async (ansRes) => {
             let answers = [];
+            doneCountB += ansRes.length * 3;
             for(let answer of ansRes) {
+                let ansResult = JSON.parse(JSON.stringify(answer));
                 let commentCount = 0;
                 let agreeCount = 0;
-                let isAgree = false;
                 // 如果有回答
-                if (ansRes.length) {
-                    // 获取回答的评论数量
-                    let answerID = answer.id;
-                    commentCount = await getCountFromPointer({
-                        parentID: answerID,
-                        parentClassName: 'Answer',
-                        childClassName: 'Comment',
-                        dependent: 'answerID'
-                    })
-                    agreeCount = await getCountFromMap({
-                        queryClassName: 'Answer',
-                        queryClassID: answerID,
-                        mapName: 'Agree',
-                        dependent: 'answerID'
-                    })
-                    // 检查当前用户是否点赞
-                    let sessionToken = req.cookies.isLogin || null;
-                    if (sessionToken) {
-                        let user = await AV.User.become(sessionToken);
+                // 获取回答的评论数量
+                let answerID = answer.id;
+                getCountFromPointer({
+                    parentID: answerID,
+                    parentClassName: 'Answer',
+                    childClassName: 'Comment',
+                    dependent: 'answerID'
+                }).then((commentCount) => {
+                    ansResult.commentCount = commentCount;
+                    isDoneB++;
+                    if (isDoneA === doneCountA && isDoneB === doneCountB) {
+                        res.send(results);
+                    }
+                })
+                getCountFromMap({
+                    queryClassName: 'Answer',
+                    queryClassID: answerID,
+                    mapName: 'Agree',
+                    dependent: 'answerID'
+                }).then((agreeCount) => {
+                    ansResult.agreeCount = agreeCount;
+                    isDoneB++;
+                    if (isDoneA === doneCountA && isDoneB === doneCountB) {
+                        res.send(results);
+                    }
+                })
+                // 检查当前用户是否点赞
+                let sessionToken = req.cookies.sessionToken || null;
+                if (sessionToken) {
+                    AV.User.become(sessionToken).then((user) => {
                         let AgreeMap = new AV.Query('Agree');
                         AgreeMap.equalTo('answerID', answer);
                         AgreeMap.equalTo('userID', user);
-                        let currentUserAgree = await AgreeMap.count();
-                        isAgree = currentUserAgree? true: false;
+                        AgreeMap.count().then((currentUserAgree) => {
+                            let isAgree = currentUserAgree? true: false;
+                            ansResult.isAgree = isAgree;
+                            isDoneB++;
+                            if (isDoneA === doneCountA && isDoneB === doneCountB) {
+                                res.send(results);
+                            }
+                        });
+                    });
+                } else {
+                    isDoneB++;
+                    if (isDoneA === doneCountA && isDoneB === doneCountB) {
+                        res.send(results);
                     }
                 }
-                let ansResult = JSON.parse(JSON.stringify(answer));
-                ansResult.isAgree = isAgree;
-                ansResult.commentCount = commentCount;
-                ansResult.agreeCount = agreeCount;
                 answers.push(ansResult);
             }
             tempItem.answers = answers;
-            isDone++;
-            if (isDone === results.length) {
+            isDoneA++;
+            if (isDoneA === doneCountA && isDoneB === doneCountB) {
                 res.send(results);
             }
         }).catch(err => {

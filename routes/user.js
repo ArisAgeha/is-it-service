@@ -24,7 +24,7 @@ router.post('/signup', function(req, res, next) {
 router.post('/login', (req, res, next) => {
     let {username, password} = req.body;
     AV.User.logIn(username, password).then((userMsg) => {
-        res.cookie('sessionToken', userMsg._sessionToken);
+        res.cookie('sessionToken', userMsg._sessionToken, {maxAge: 2592000000});
         res.send(userMsg);
     }).catch((err) => {
         console.log(err);
@@ -35,7 +35,6 @@ router.post('/login', (req, res, next) => {
 router.post('/loginByCookie', (req, res, next) => {
     let {sessionToken} = req.body;
     AV.User.become(sessionToken).then((userMsg) => {
-        res.cookie('sessionToken', userMsg._sessionToken);
         res.send(userMsg);
     }).catch((err) => {
         console.log(err);

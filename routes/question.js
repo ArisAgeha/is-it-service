@@ -4,8 +4,9 @@ let AV = require('../models/lc.js');
 
 /* GET users listing. */
 router.post('/addQuestion', function(req, res, next) {
-    let sessionToken = req.cookies.isLogin || null;
+    let sessionToken = req.cookies.sessionToken || null;
     if (!sessionToken) {
+        res.status(403);
         res.send({code: 1, message: 'not login.'});
         return;
     }
@@ -36,11 +37,15 @@ router.post('/addQuestion', function(req, res, next) {
                     saveList.push(TopicQuestion);
                 }
                 AV.Object.saveAll(saveList).then((status) => {
+                    console.log('111')
                     res.send(status);
                 }).catch((err) => {
+                    console.log('222')
+                    res.status(403);
                     res.send(err);
                 });
             }).catch((err) => {
+                res.status(403);
                 console.log(err)
             });
         });

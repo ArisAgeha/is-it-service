@@ -4,7 +4,7 @@ let AV = require('../models/lc.js');
 
 /* GET users listing. */
 router.post('/addComment', function(req, res, next) {
-    let sessionToken = req.cookies.isLogin || null;
+    let sessionToken = req.cookies.sessionToken || null;
     if (!sessionToken) {
         res.send({code: 1, message: 'not login.'});
         return;
